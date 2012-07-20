@@ -339,10 +339,16 @@ class OAuthRemoteApp(object):
         function.
         """
         client = self.make_client()
-        resp, content = client.request('%s?oauth_verifier=%s' % (
-            self.expand_url(self.access_token_url),
-            request.args['oauth_verifier']
-        ), self.access_token_method)
+        access_token_url = self.expand_url(self.access_token_url)
+        if 'oauth_verifier' in request.args:
+            access_token_url += ('?oauth_verifier=%s' %
+                                 request.args['oauth_verifier'])
+        else:
+            # WARNING: old OAuth 1.0, which has security issues.
+            # See http://oauth.net/advisories/2009-1/
+            pass
+        resp, content = client.request(access_token_url,
+                                       self.access_token_method)
         data = parse_response(resp, content)
         if resp['status'] != '200':
             raise OAuthException('Invalid response from ' + self.name, data)
@@ -392,6 +398,9 @@ class OAuthRemoteApp(object):
         @wraps(f)
         def decorated(*args, **kwargs):
             if 'oauth_verifier' in request.args:
+                data = self.handle_oauth1_response()
+            elif 'oauth_token' in request.args:
+                # WARNING: old OAuth 1.0
                 data = self.handle_oauth1_response()
             elif 'code' in request.args:
                 data = self.handle_oauth2_response()
