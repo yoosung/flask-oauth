@@ -297,17 +297,22 @@ class OAuthRemoteApp(object):
         session.pop(self.name + '_oauthtok', None)
         session.pop(self.name + '_oauthredir', None)
 
-    def authorize(self, callback=None):
+    def authorize(self, callback=None, params=None):
         """Returns a redirect response to the remote authorization URL with
         the signed callback given.  The callback must be `None` in which
         case the application will most likely switch to PIN based authentication
         or use a remotely stored callback URL.  Alternatively it's an URL
         on the system that has to be decorated as :meth:`authorized_handler`.
+
+        :param params: an optional dictionary of OAuth1 parameters to forward to
+                       the authorize URL.
         """
         if self.request_token_url:
             token = self.generate_request_token(callback)[0]
-            url = '%s?oauth_token=%s' % (self.expand_url(self.authorize_url),
-                                         url_quote(token))
+
+            params = params or {}
+            params['oauth_token'] = token
+            url = add_query(self.expand_url(self.authorize_url), params)
         else:
             assert callback is not None, 'Callback is required OAuth2'
             # This is for things like facebook's oauth.  Since we need the
